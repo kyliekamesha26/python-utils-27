@@ -1,36 +1,38 @@
 import re
-from typing import Any, Optional
+from typing import Any
 
 
-def is_valid_email(value: Any) -> bool:
+def validate_email(value: str) -> bool:
     if not isinstance(value, str) or not value:
         return False
     pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return re.match(pattern, value) is not None
 
 
-def is_valid_url(value: Any) -> bool:
+def validate_url(value: str) -> bool:
     if not isinstance(value, str) or not value:
         return False
     pattern = r"^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$"
     return re.match(pattern, value) is not None
 
 
-def is_valid_phone(value: Any) -> bool:
+def validate_phone(value: str) -> bool:
     if not isinstance(value, str) or not value:
         return False
-    digits = re.sub(r"[^0-9]", "", value)
-    return 10 <= len(digits) <= 15
+    cleaned = re.sub(r"[\s\-\(\)]", "", value)
+    pattern = r"^\+?\d{10,15}$"
+    return re.match(pattern, cleaned) is not None
 
 
-def is_valid_ip_address(value: Any) -> bool:
-    if not isinstance(value, str) or not value:
+def validate_age(value: Any) -> bool:
+    try:
+        age = int(value)
+        return 0 < age < 150
+    except (ValueError, TypeError):
         return False
-    pattern = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-    return re.match(pattern, value) is not None
 
 
-def is_positive_integer(value: Any) -> bool:
+def validate_positive_int(value: Any) -> bool:
     try:
         num = int(value)
         return num > 0
@@ -38,12 +40,26 @@ def is_positive_integer(value: Any) -> bool:
         return False
 
 
-def is_valid_length(value: Any, min_len: int = 1, max_len: Optional[int] = None) -> bool:
+def validate_non_empty_string(value: Any) -> bool:
     if not isinstance(value, str):
         return False
-    length = len(value)
-    if length < min_len:
+    return len(value.strip()) > 0
+
+
+def validate_list_not_empty(value: Any) -> bool:
+    if not isinstance(value, list):
         return False
-    if max_len is not None and length > max_len:
+    return len(value) > 0
+
+
+def validate_dict_keys(value: Any, required_keys: list) -> bool:
+    if not isinstance(value, dict):
         return False
-    return True
+    return all(key in value for key in required_keys)
+
+
+def validate_ip_address(value: str) -> bool:
+    if not isinstance(value, str) or not value:
+        return False
+    pattern = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+    return re.match(pattern, value) is not None
