@@ -1,65 +1,32 @@
-import re
-from typing import Any
+from typing import Any, Optional, Union
 
 
-def validate_email(value: str) -> bool:
-    if not isinstance(value, str) or not value:
+def validate_email(email: str) -> bool:
+    """Validate email string format."""
+    if not isinstance(email, str) or "@" not in email:
         return False
-    pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-    return re.match(pattern, value) is not None
+    return len(email.split("@")[0]) > 0
 
 
-def validate_url(value: str) -> bool:
-    if not isinstance(value, str) or not value:
+def validate_int_range(value: int, min_val: int, max_val: int) -> bool:
+    """Check if integer is within inclusive bounds."""
+    return min_val <= value <= max_val
+
+
+def validate_required(value: Any) -> bool:
+    """Ensure input is not None or empty."""
+    if value is None:
         return False
-    pattern = r"^https?://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}(/.*)?$"
-    return re.match(pattern, value) is not None
+    if isinstance(value, (str, list, dict, set)):
+        return len(value) > 0
+    return True
 
 
-def validate_phone(value: str) -> bool:
-    if not isinstance(value, str) or not value:
-        return False
-    cleaned = re.sub(r"[\s\-\(\)]", "", value)
-    pattern = r"^\+?\d{10,15}$"
-    return re.match(pattern, cleaned) is not None
+def sanitize_input(value: Optional[str]) -> str:
+    """Remove whitespace and cast to string."""
+    return str(value).strip() if value else ""
 
 
-def validate_age(value: Any) -> bool:
-    try:
-        age = int(value)
-        return 0 < age < 150
-    except (ValueError, TypeError):
-        return False
-
-
-def validate_positive_int(value: Any) -> bool:
-    try:
-        num = int(value)
-        return num > 0
-    except (ValueError, TypeError):
-        return False
-
-
-def validate_non_empty_string(value: Any) -> bool:
-    if not isinstance(value, str):
-        return False
-    return len(value.strip()) > 0
-
-
-def validate_list_not_empty(value: Any) -> bool:
-    if not isinstance(value, list):
-        return False
-    return len(value) > 0
-
-
-def validate_dict_keys(value: Any, required_keys: list) -> bool:
-    if not isinstance(value, dict):
-        return False
-    return all(key in value for key in required_keys)
-
-
-def validate_ip_address(value: str) -> bool:
-    if not isinstance(value, str) or not value:
-        return False
-    pattern = r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-    return re.match(pattern, value) is not None
+def validate_payload(data: dict, schema: dict) -> bool:
+    """Verify dictionary keys against a schema mapping."""
+    return all(k in data and isinstance(data[k], v) for k, v in schema.items())
