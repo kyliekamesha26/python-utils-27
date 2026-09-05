@@ -1,43 +1,34 @@
-import functools
-import logging
-import time
-from typing import Callable, Any
+import json
+import os
+from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+def load_json(filepath: str) -> Dict[str, Any]:
+    if not os.path.exists(filepath):
+        return {}
+    with open(filepath, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-def retry(retries: int = 3, delay: float = 1.0) -> Callable:
-    def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            last_exception = None
-            for attempt in range(retries):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    last_exception = e
-                    time.sleep(delay)
-            raise last_exception
-        return wrapper
-    return decorator
+def save_json(data: Dict[str, Any], filepath: str) -> None:
+    with open(filepath, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=4)
 
-def chunk_list(data: list, size: int):
-    for i in range(0, len(data), size):
-        yield data[i:i + size]
+def chunk_list(items: List[Any], size: int) -> List[List[Any]]:
+    return [items[i:i + size] for i in range(0, len(items), size)]
 
-def dict_get_nested(data: dict, keys: str, default: Any = None) -> Any:
-    curr = data
-    for key in keys.split('.'):
-        if not isinstance(curr, dict) or key not in curr:
-            return default
-        curr = curr[key]
-    return curr
+def get_env(key: str, default: Optional[str] = None) -> str:
+    return os.environ.get(key, default or "")
 
-def timer(func: Callable) -> Callable:
-    @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        start = time.perf_counter()
-        result = func(*args, **kwargs)
-        duration = time.perf_counter() - start
-        logger.info(f'{func.__name__} executed in {duration:.4f}s')
-        return result
-    return wrapper
+def flatten_list(nested: List[List[Any]]) -> List[Any]:
+    return [item for sublist in nested for item in sublist]
+
+def ensure_dir(path: str) -> None:
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+def singleton(cls):
+    instances = {}
+    def get_instance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+    return get_instance
