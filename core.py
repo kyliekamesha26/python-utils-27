@@ -1,33 +1,31 @@
-import functools
 import time
-from typing import Any, Callable, Dict, Tuple
+import functools
+from typing import Callable, Any, Type, Tuple
 
-
-class MemoizedPipeline:
-    def __init__(self, maxsize: int = 128, ttl: float = 60.0):
-        self.maxsize = maxsize
-        self.ttl = ttl
-        self._cache: Dict[Tuple[Any, ...], Tuple[float, Any]] = {}
-
-    def memoize(self, func: Callable) -> Callable:
+def retry(exceptions: Tuple[Type[Exception], ...], 
+          tries: int = 3, 
+          delay: float = 1.0, 
+          backoff: float = 2.0) -> Callable:
+    """Decorator for retrying functions on specific exceptions."""
+    def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            key = (args, tuple(sorted(kwargs.items())))
-            now = time.time()
-            if key in self._cache:
-                timestamp, result = self._cache[key]
-                if now - timestamp < self.ttl:
-                    return result
-
-            result = func(*args, **kwargs)
-            if len(self._cache) >= self.maxsize:
-                oldest_key = min(self._cache, key=lambda k: self._cache[k][0])
-                del self._cache[oldest_key]
-
-            self._cache[key] = (now, result)
-            return result
-
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return func(*args, **kwargs)
+                except exceptions:
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return func(*args, **kwargs)
         return wrapper
+    return decorator
 
-    def clear(self) -> None:
-        self._cache.clear()
+def execute_with_retry(func: Callable, *args: Any, **kwargs: Any) -> Any:
+    """Procedural execution helper for network operations."""
+    try:
+        return func(*args, **kwargs)
+    except Exception:
+        # Implementation for context-specific retry logic
+        raise
