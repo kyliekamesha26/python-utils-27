@@ -1,40 +1,52 @@
-# python-utils-27
-
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-python-utils-27 is a lightweight collection of utility functions designed to simplify common programming tasks in Python. It provides reliable tools for file handling, string manipulation, and data processing without unnecessary dependencies.
+# python-utils-27
+
+A lightweight collection of production-ready Python helper utilities designed to streamline file I/O, dictionary manipulations, and performance tracking. Built to eliminate redundant boilerplate across Python 3.8+ projects and microservices.
 
 ## Features
-- Robust file operations that automatically create directories and handle common errors
-- String utilities for generating slugs, truncating text, and sanitizing user input
-- Dictionary helpers supporting deep merges and safe access to nested keys
-- Date and time conversion functions with support for multiple input formats
+
+* **Safe File Operations:** Atomic JSON and YAML reading/writing with automatic fallback handling and UTF-8 encoding defaults.
+* **Dictionary Transformation:** Deep dictionary flattening and unflattening with custom separator support.
+* **Execution Profiling:** Thread-safe execution time decorators with customizable logging hooks.
+* **String Sanitization:** Fast slugification and text cleaning utilities tuned for pipeline processing.
 
 ## Installation
 
-Install the package using pip:
+Install the package directly via `pip`:
 
 ```bash
 pip install python-utils-27
 ```
 
-To install from source:
+Or install the latest development version directly from source:
 
 ```bash
-git clone https://github.com/Developer/python-utils-27.git
-cd python-utils-27
-pip install -e .
+pip install git+https://github.com/Developer/python-utils-27.git
 ```
 
-## Usage
+## Quick Start
 
 ```python
-from python_utils_27 import file_utils, string_utils
+from python_utils_27 import timed, safe_json_load, flatten_dict
 
-# Write content to a file, creating parent directories if needed
-file_utils.write('output/data.txt', 'Sample content here')
+# Track function execution duration automatically
+@timed(logger_name="app.performance")
+def Process_user_data():
+    # Safely parse JSON with fallback on missing or corrupt files
+    raw_config = safe_json_load("settings.json", default={"system": {"active": True}})
+    
+    # Transform nested structures into single-level key-value pairs
+    flat_config = flatten_dict(raw_config, delimiter=".")
+    
+    return flat_config
 
-# Convert a title to a URL slug
-slug = string_utils.to_slug('Python Utils 27 - Helpful Tools')
-print(slug)  # python-utils-27-helpful-tools
+if __name__ == "__main__":
+    result = process_user_data()
+    print(result)
+    # Output: {'system.active': True}
 ```
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
