@@ -1,41 +1,31 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 
-class ValidationError(ValueError):
-    """Raised when input data fails validation checks."""
-    pass
+class DataProcessor:
+    def __init__(self, required_keys: Optional[List[str]] = None):
+        self.required_keys = required_keys or ["id", "payload"]
 
+    def validate_input(self, item: Any) -> bool:
+        if not isinstance(item, dict):
+            return False
+        for key in self.required_keys:
+            if key not in item or item[key] is None:
+                return False
+        return True
 
-def validate_payload(data: Any) -> Dict[str, Any]:
-    if not isinstance(data, dict):
-        raise ValidationError("Payload must be a dictionary")
+    def process_stream(self, stream: List[Any]) -> List[Dict[str, Any]]:
+        results = []
+        for raw_data in stream:
+            if not self.validate_input(raw_data):
+                continue
 
-    if "id" not in data:
-        raise ValidationError("Missing required field: id")
+            payload = raw_data["payload"]
+            if not isinstance(payload, (str, bytes, list, dict)):
+                continue
 
-    if not isinstance(data["id"], (int, str)):
-        raise ValidationError("Field 'id' must be an integer or string")
-
-    if "value" not in data:
-        raise ValidationError("Missing required field: value")
-
-    return data
-
-
-def process_inputs(inputs: List[Any]) -> List[Dict[str, Any]]:
-    processed_results = []
-    for index, item in enumerate(inputs):
-        try:
-            validated = validate_payload(item)
-            processed_results.append({
-                "id": validated["id"],
-                "status": "success",
-                "data": validated["value"]
+            results.append({
+                "id": raw_data["id"],
+                "processed": True,
+                "size": len(payload)
             })
-        except ValidationError as err:
-            processed_results.append({
-                "index": index,
-                "status": "failed",
-                "error": str(err)
-            })
-    return processed_results
+        return results
