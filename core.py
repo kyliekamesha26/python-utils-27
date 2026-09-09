@@ -1,31 +1,39 @@
 import time
-import functools
-from typing import Callable, Any, Type, Tuple
+from functools import wraps
+from typing import Callable, Any, Dict, Tuple
 
-def retry(exceptions: Tuple[Type[Exception], ...], 
-          tries: int = 3, 
-          delay: float = 1.0, 
-          backoff: float = 2.0) -> Callable:
-    """Decorator for retrying functions on specific exceptions."""
+def memoize_with_ttl(ttl: float) -> Callable:
+    cache: Dict[Tuple[Any, ...], Tuple[Any, float]] = {}
+
     def decorator(func: Callable) -> Callable:
-        @functools.wraps(func)
+        @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
-            mtries, mdelay = tries, delay
-            while mtries > 1:
-                try:
-                    return func(*args, **kwargs)
-                except exceptions:
-                    time.sleep(mdelay)
-                    mtries -= 1
-                    mdelay *= backoff
-            return func(*args, **kwargs)
+            now = time.monotonic()
+            key = (args, tuple(sorted(kwargs.items()))) if kwargs else args
+            if key in cache:
+                val, expiry = cache[key]
+                if now < expiry:
+                    return val
+            result = func(*args, **kwargs)
+            cache[key] = (result, now + ttl)
+            return result
+
+        def cache_clear() -> None:
+            cache.clear()
+
+        wrapper.cache_clear = cache_clear  # type: ignore
         return wrapper
     return decorator
 
-def execute_with_retry(func: Callable, *args: Any, **kwargs: Any) -> Any:
-    """Procedural execution helper for network operations."""
-    try:
-        return func(*args, **kwargs)
-    except Exception:
-        # Implementation for context-specific retry logic
-        raise
+def fast_flatten(d: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
+    result: Dict[str, Any] = {}
+    stack = [(d, "")]
+    while stack:
+        curr, prefix = stack.pop()
+        for k, v in curr.items():
+            new_key = f"{prefix}{sep}{k}" if prefix else k
+            if isinstance(v, dict) and v:
+                stack.append((v, new_key))
+            else:
+                result[new_key] = v
+    return result
