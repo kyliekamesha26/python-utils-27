@@ -1,34 +1,42 @@
-import json
-import os
-from typing import Any, Dict, List, Optional
+import functools
+import time
+from typing import Callable, Any
 
-def load_json(filepath: str) -> Dict[str, Any]:
-    if not os.path.exists(filepath):
-        return {}
-    with open(filepath, 'r', encoding='utf-8') as f:
-        return json.load(f)
+def compose(*functions: Callable) -> Callable:
+    return functools.reduce(lambda f, g: lambda x: f(g(x)), functions)
 
-def save_json(data: Dict[str, Any], filepath: str) -> None:
-    with open(filepath, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=4)
+def memoize(func: Callable) -> Callable:
+    cache = {}
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = (args, frozenset(kwargs.items()))
+        if key not in cache:
+            cache[key] = func(*args, **kwargs)
+        return cache[key]
+    return wrapper
 
-def chunk_list(items: List[Any], size: int) -> List[List[Any]]:
-    return [items[i:i + size] for i in range(0, len(items), size)]
+def retry(attempts: int = 3, delay: float = 1.0) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            last_exception = None
+            for _ in range(attempts):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    time.sleep(delay)
+            raise last_exception
+        return wrapper
+    return decorator
 
-def get_env(key: str, default: Optional[str] = None) -> str:
-    return os.environ.get(key, default or "")
+def chunk_list(data: list, size: int) -> list:
+    return [data[i:i + size] for i in range(0, len(data), size)]
 
-def flatten_list(nested: List[List[Any]]) -> List[Any]:
-    return [item for sublist in nested for item in sublist]
-
-def ensure_dir(path: str) -> None:
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-def singleton(cls):
-    instances = {}
-    def get_instance(*args, **kwargs):
-        if cls not in instances:
-            instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
-    return get_instance
+def get_nested(data: dict, keys: list, default: Any = None) -> Any:
+    for key in keys:
+        if isinstance(data, dict):
+            data = data.get(key, default)
+        else:
+            return default
+    return data
