@@ -1,32 +1,34 @@
-from typing import Any, Optional, Union
+import functools
+from typing import Any, Callable, Dict
 
+_CACHE: Dict[tuple, Any] = {}
 
-def validate_email(email: str) -> bool:
-    """Validate email string format."""
-    if not isinstance(email, str) or "@" not in email:
+def memoize_validator(func: Callable) -> Callable:
+    @functools.wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        key = (func.__name__, args, frozenset(kwargs.items()))
+        if key not in _CACHE:
+            _CACHE[key] = func(*args, **kwargs)
+        return _CACHE[key]
+    return wrapper
+
+@memoize_validator
+def validate_schema(data: dict, schema: dict) -> bool:
+    if not isinstance(data, dict) or not isinstance(schema, dict):
         return False
-    return len(email.split("@")[0]) > 0
-
-
-def validate_int_range(value: int, min_val: int, max_val: int) -> bool:
-    """Check if integer is within inclusive bounds."""
-    return min_val <= value <= max_val
-
-
-def validate_required(value: Any) -> bool:
-    """Ensure input is not None or empty."""
-    if value is None:
-        return False
-    if isinstance(value, (str, list, dict, set)):
-        return len(value) > 0
+    for key, expected_type in schema.items():
+        if key not in data or not isinstance(data[key], expected_type):
+            return False
     return True
 
+def clear_validator_cache() -> None:
+    _CACHE.clear()
 
-def sanitize_input(value: Optional[str]) -> str:
-    """Remove whitespace and cast to string."""
-    return str(value).strip() if value else ""
+class DataValidator:
+    __slots__ = ('schema',)
 
+    def __init__(self, schema: dict):
+        self.schema = schema
 
-def validate_payload(data: dict, schema: dict) -> bool:
-    """Verify dictionary keys against a schema mapping."""
-    return all(k in data and isinstance(data[k], v) for k, v in schema.items())
+    def validate(self, data: dict) -> bool:
+        return validate_schema(data, self.schema)
