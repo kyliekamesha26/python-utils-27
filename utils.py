@@ -1,43 +1,29 @@
-import time
-from typing import Any, Callable, Dict, Generator, List, TypeVar
+from typing import Any, Iterable, Optional, TypeVar
 
-T = TypeVar("T")
+T = TypeVar('T')
 
-
-def chunk_list(lst: List[T], size: int) -> Generator[List[T], None, None]:
-    """Split a list into chunks of a specified size."""
-    if size <= 0:
-        raise ValueError("Chunk size must be greater than zero.")
-    for i in range(0, len(lst), size):
-        yield lst[i : i + size]
-
-
-def deep_merge(dict_a: Dict[Any, Any], dict_b: Dict[Any, Any]) -> Dict[Any, Any]:
-    """Recursively merge dictionary b into dictionary a."""
-    result = dict_a.copy()
-    for key, value in dict_b.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = deep_merge(result[key], value)
+def flatten(items: Iterable[Any]) -> list[Any]:
+    """Flatten a nested list structure into a single list."""
+    result: list[Any] = []
+    for item in items:
+        if isinstance(item, list):
+            result.extend(flatten(item))
         else:
-            result[key] = value
+            result.append(item)
     return result
 
+def chunk(items: list[T], size: int) -> list[list[T]]:
+    """Split a list into smaller lists of fixed size."""
+    if size <= 0:
+        raise ValueError("Chunk size must be positive")
+    return [items[i:i + size] for i in range(0, len(items), size)]
 
-def retry(retries: int = 3, delay: float = 0.1) -> Callable[[Callable[..., T]], Callable[..., T]]:
-    """Retry decorator with specified attempts and delay."""
-
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        def wrapper(*args: Any, **kwargs: Any) -> T:
-            last_exception = Exception("Unknown failure")
-            for attempt in range(retries):
-                try:
-                    return func(*args, **kwargs)
-                except Exception as e:
-                    last_exception = e
-                    if attempt < retries - 1:
-                        time.sleep(delay)
-            raise last_exception
-
-        return wrapper
-
-    return decorator
+def get_nested(data: dict[Any, Any], keys: list[str], default: Optional[Any] = None) -> Any:
+    """Access deeply nested dictionary values safely."""
+    current = data
+    for key in keys:
+        if isinstance(current, dict) and key in current:
+            current = current[key]
+        else:
+            return default
+    return current
