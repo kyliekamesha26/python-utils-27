@@ -1,31 +1,22 @@
-from typing import Any, Dict, List, Optional
+import sys
 
+def validate_input(data):
+    if not isinstance(data, dict):
+        raise ValueError("input must be a dictionary")
+    if "payload" not in data:
+        raise KeyError("missing mandatory payload field")
+    return True
 
-class DataProcessor:
-    def __init__(self, required_keys: Optional[List[str]] = None):
-        self.required_keys = required_keys or ["id", "payload"]
+def process_stream(data_stream):
+    for item in data_stream:
+        try:
+            if validate_input(item):
+                print(f"processing: {item['payload']}")
+        except (ValueError, KeyError) as e:
+            print(f"validation error: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"unexpected system error: {e}", file=sys.stderr)
 
-    def validate_input(self, item: Any) -> bool:
-        if not isinstance(item, dict):
-            return False
-        for key in self.required_keys:
-            if key not in item or item[key] is None:
-                return False
-        return True
-
-    def process_stream(self, stream: List[Any]) -> List[Dict[str, Any]]:
-        results = []
-        for raw_data in stream:
-            if not self.validate_input(raw_data):
-                continue
-
-            payload = raw_data["payload"]
-            if not isinstance(payload, (str, bytes, list, dict)):
-                continue
-
-            results.append({
-                "id": raw_data["id"],
-                "processed": True,
-                "size": len(payload)
-            })
-        return results
+if __name__ == "__main__":
+    test_data = [{"payload": "task_1"}, "invalid", {"invalid": "data"}]
+    process_stream(test_data)
