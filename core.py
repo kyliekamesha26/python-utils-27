@@ -1,39 +1,30 @@
-import time
-from functools import wraps
-from typing import Callable, Any, Dict, Tuple
+from typing import Any, Iterable, Dict, List, Optional
 
-def memoize_with_ttl(ttl: float) -> Callable:
-    cache: Dict[Tuple[Any, ...], Tuple[Any, float]] = {}
+def deep_update(base: Dict[Any, Any], update: Dict[Any, Any]) -> Dict[Any, Any]:
+    for key, value in update.items():
+        if isinstance(value, dict) and key in base and isinstance(base[key], dict):
+            deep_update(base[key], value)
+        else:
+            base[key] = value
+    return base
 
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            now = time.monotonic()
-            key = (args, tuple(sorted(kwargs.items()))) if kwargs else args
-            if key in cache:
-                val, expiry = cache[key]
-                if now < expiry:
-                    return val
-            result = func(*args, **kwargs)
-            cache[key] = (result, now + ttl)
-            return result
+def chunk_list(data: Iterable[Any], size: int) -> List[List[Any]]:
+    if size <= 0:
+        raise ValueError("chunk size must be positive")
+    data_list = list(data)
+    return [data_list[i:i + size] for i in range(0, len(data_list), size)]
 
-        def cache_clear() -> None:
-            cache.clear()
+def filter_none(data: Dict[Any, Any]) -> Dict[Any, Any]:
+    return {k: v for k, v in data.items() if v is not None}
 
-        wrapper.cache_clear = cache_clear  # type: ignore
-        return wrapper
-    return decorator
+def pluck(data: List[Dict[Any, Any]], key: Any, default: Any = None) -> List[Any]:
+    return [item.get(key, default) for item in data]
 
-def fast_flatten(d: Dict[str, Any], sep: str = ".") -> Dict[str, Any]:
-    result: Dict[str, Any] = {}
-    stack = [(d, "")]
-    while stack:
-        curr, prefix = stack.pop()
-        for k, v in curr.items():
-            new_key = f"{prefix}{sep}{k}" if prefix else k
-            if isinstance(v, dict) and v:
-                stack.append((v, new_key))
-            else:
-                result[new_key] = v
+def flatten(data: Iterable[Any]) -> List[Any]:
+    result = []
+    for item in data:
+        if isinstance(item, (list, tuple)):
+            result.extend(flatten(item))
+        else:
+            result.append(item)
     return result
