@@ -1,30 +1,47 @@
-from typing import Any, Iterable, Dict, List, Optional
+import logging
+from typing import Any, Dict, List
 
-def deep_update(base: Dict[Any, Any], update: Dict[Any, Any]) -> Dict[Any, Any]:
-    for key, value in update.items():
-        if isinstance(value, dict) and key in base and isinstance(base[key], dict):
-            deep_update(base[key], value)
-        else:
-            base[key] = value
-    return base
+logger = logging.getLogger(__name__)
 
-def chunk_list(data: Iterable[Any], size: int) -> List[List[Any]]:
-    if size <= 0:
-        raise ValueError("chunk size must be positive")
-    data_list = list(data)
-    return [data_list[i:i + size] for i in range(0, len(data_list), size)]
 
-def filter_none(data: Dict[Any, Any]) -> Dict[Any, Any]:
-    return {k: v for k, v in data.items() if v is not None}
+class ValidationError(Exception):
+    pass
 
-def pluck(data: List[Dict[Any, Any]], key: Any, default: Any = None) -> List[Any]:
-    return [item.get(key, default) for item in data]
 
-def flatten(data: Iterable[Any]) -> List[Any]:
-    result = []
-    for item in data:
-        if isinstance(item, (list, tuple)):
-            result.extend(flatten(item))
-        else:
-            result.append(item)
-    return result
+def validate_item(item: Any) -> Dict[str, Any]:
+    if not isinstance(item, dict):
+        raise ValidationError(f"Expected dictionary, got {type(item).__name__}")
+
+    item_id = item.get("id")
+    if item_id is None:
+        raise ValidationError("Missing required field: 'id'")
+
+    try:
+        item_id = int(item_id)
+    except (ValueError, TypeError):
+        raise ValidationError(f"Invalid 'id' value: {item_id}")
+
+    value = item.get("payload")
+    if value is None:
+        raise ValidationError("Missing required field: 'payload'")
+
+    return {"id": item_id, "payload": value}
+
+
+def process_batch(items: List[Any]) -> List[Dict[str, Any]]:
+    processed = []
+    if not isinstance(items, list):
+        logger.error("Input data must be a list")
+        return processed
+
+    for index, item in enumerate(items):
+        try:
+            validated_item = validate_item(item)
+            processed.append(validated_item)
+        except ValidationError as error:
+            logger.warning(
+                "Skipping item at index %d due to validation failure: %s",
+                index,
+                error,
+            )
+    return processed
